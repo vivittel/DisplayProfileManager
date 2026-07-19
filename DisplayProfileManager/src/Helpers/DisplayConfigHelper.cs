@@ -49,6 +49,8 @@ namespace DisplayProfileManager.Helpers
         [DllImport("user32.dll")]
         private static extern int DisplayConfigGetDeviceInfo(ref DisplayConfigGetAdvancedColorInfo colorInfo);
         [DllImport("user32.dll")]
+        private static extern int DisplayConfigGetDeviceInfo(ref DisplayConfigGetAdvancedColorInfo2 colorInfo);
+        [DllImport("user32.dll")]
         private static extern int DisplayConfigSetDeviceInfo(ref DisplayConfigSetAdvancedColorState colorState);
         [DllImport("user32.dll")]
         private static extern int DisplayConfigSetDeviceInfo(ref DisplayConfigSetHdrState state);
@@ -176,6 +178,24 @@ namespace DisplayProfileManager.Helpers
             AdvancedColorEnabled = 0x2,
             WideColorEnforced = 0x4,
             AdvancedColorForceDisabled = 0x8,
+        }
+        [Flags]
+        public enum DisplayConfigAdvancedColorInfo2Flags : uint
+        {
+            AdvancedColorSupported = 1u << 0,
+            AdvancedColorActive = 1u << 1,
+            AdvancedColorLimitedByPolicy = 1u << 3,
+            HighDynamicRangeSupported = 1u << 4,
+            HighDynamicRangeUserEnabled = 1u << 5,
+            WideColorSupported = 1u << 6,
+            WideColorUserEnabled = 1u << 7
+        }
+
+        public enum DisplayConfigAdvancedColorMode : uint
+        {
+            Sdr = 0,
+            Wcg = 1,
+            Hdr = 2
         }
         public enum DisplayConfigSetAdvancedColorFlags : uint
         {
@@ -368,7 +388,15 @@ namespace DisplayProfileManager.Helpers
             public DisplayConfigColorEncoding colorEncoding;
             public int bitsPerColorChannel;
         }
-
+        [StructLayout(LayoutKind.Sequential)]
+        public struct DisplayConfigGetAdvancedColorInfo2
+        {
+            public DisplayConfigDeviceInfoHeader header;
+            public DisplayConfigAdvancedColorInfo2Flags values;
+            public DisplayConfigColorEncoding colorEncoding;
+            public uint bitsPerColorChannel;
+            public DisplayConfigAdvancedColorMode activeColorMode;
+        }
         [StructLayout(LayoutKind.Sequential)]
         public struct DisplayConfigSetAdvancedColorState
         {
@@ -509,34 +537,129 @@ namespace DisplayProfileManager.Helpers
                         displayConfig.FriendlyName = targetName.monitorFriendlyDeviceName;
 
                     // Advanced color state (HDR/ACM)
-                    var colorInfo = new DisplayConfigGetAdvancedColorInfo();
-                    colorInfo.header.type = DisplayConfigDeviceInfoType.GetAdvancedColorInfo;
-                    colorInfo.header.size = (uint)Marshal.SizeOf(typeof(DisplayConfigGetAdvancedColorInfo));
-                    colorInfo.header.adapterId = path.targetInfo.adapterId;
-                    colorInfo.header.id = path.targetInfo.id;
+                    bool colorStateLoaded = false;
 
-                    result = DisplayConfigGetDeviceInfo(ref colorInfo);
-                    if (result == ErrorSuccess)
+                    // Prefer DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO_2 on Windows 11 24H2
+                    // and later because it reports HDR and WCG states independently.
+                    if (IsWindows24H2OrGreater())
                     {
-                        var flags = colorInfo.values;
-                        bool isSupported = (flags & DisplayConfigAdvancedColorInfoFlags.AdvancedColorSupported) != 0;
-                        bool isEnabled = (flags & DisplayConfigAdvancedColorInfoFlags.AdvancedColorEnabled) != 0;
-                        bool isForceDisabled = (flags & DisplayConfigAdvancedColorInfoFlags.AdvancedColorForceDisabled) != 0;
+                        var colorInfo2 = new DisplayConfigGetAdvancedColorInfo2
+                        {
+                            header =
+                            {
+                                type = DisplayConfigDeviceInfoType.GetAdvancedColorInfo2,
+                                size = (uint)Marshal.SizeOf(typeof(DisplayConfigGetAdvancedColorInfo2)),
+                                adapterId = path.targetInfo.adapterId,
+                                id = path.targetInfo.id
+                            }
+                        };
 
-                        bool finalSupported = isSupported && !isForceDisabled;
-                        bool isHdrEncoding = colorInfo.colorEncoding == DisplayConfigColorEncoding.YCbCr444;
+                        result = DisplayConfigGetDeviceInfo(ref colorInfo2);
 
-                        displayConfig.IsHdrSupported = finalSupported;
-                        displayConfig.IsHdrEnabled = isEnabled && isHdrEncoding;
-                        displayConfig.IsAcmEnabled = isEnabled && !isHdrEncoding;
-                        displayConfig.ColorEncoding = colorInfo.colorEncoding;
-                        displayConfig.BitsPerColorChannel = (uint)colorInfo.bitsPerColorChannel;
+                        if (result == ErrorSuccess)
+                        {
+                            var flags = colorInfo2.values;
+
+                            displayConfig.IsHdrSupported =
+                                (flags &
+                                DisplayConfigAdvancedColorInfo2Flags.HighDynamicRangeSupported) != 0;
+
+                            displayConfig.IsHdrEnabled =
+                                (flags &
+                                DisplayConfigAdvancedColorInfo2Flags.HighDynamicRangeUserEnabled) != 0;
+
+                            displayConfig.IsAcmEnabled =
+                                (flags &
+                                DisplayConfigAdvancedColorInfo2Flags.WideColorUserEnabled) != 0;
+
+                            displayConfig.ColorEncoding = colorInfo2.colorEncoding;
+                            displayConfig.BitsPerColorChannel = colorInfo2.bitsPerColorChannel;
+
+                            logger.Debug(
+                                $"AdvancedColorInfo2 for {displayConfig.FriendlyName}: " +
+                                $"Flags=0x{(uint)flags:X8}, " +
+                                $"Mode={colorInfo2.activeColorMode}, " +
+                                $"HDRSupported={displayConfig.IsHdrSupported}, " +
+                                $"HDREnabled={displayConfig.IsHdrEnabled}, " +
+                                $"WCGEnabled={displayConfig.IsAcmEnabled}, " +
+                                $"Encoding={colorInfo2.colorEncoding}, " +
+                                $"BitsPerChannel={colorInfo2.bitsPerColorChannel}");
+
+                            colorStateLoaded = true;
+                        }
+                        else
+                        {
+                            logger.Debug(
+                                $"Failed to get AdvancedColorInfo2 for " +
+                                $"{displayConfig.DeviceName}: Error {result}");
+                        }
                     }
-                    else
+
+                    // Fall back to the legacy API when the new API is unavailable or fails.
+                    if (!colorStateLoaded)
                     {
-                        logger.Debug($"Failed to get HDR info for {displayConfig.DeviceName}: Error {result}");
-                        displayConfig.IsHdrSupported = false;
-                        displayConfig.IsHdrEnabled = false;
+                        var colorInfo = new DisplayConfigGetAdvancedColorInfo
+                        {
+                            header =
+                            {
+                                type = DisplayConfigDeviceInfoType.GetAdvancedColorInfo,
+                                size = (uint)Marshal.SizeOf(typeof(DisplayConfigGetAdvancedColorInfo)),
+                                adapterId = path.targetInfo.adapterId,
+                                id = path.targetInfo.id
+                            }
+                        };
+
+                        result = DisplayConfigGetDeviceInfo(ref colorInfo);
+
+                        if (result == ErrorSuccess)
+                        {
+                            var flags = colorInfo.values;
+
+                            bool isSupported =
+                                (flags &
+                                DisplayConfigAdvancedColorInfoFlags.AdvancedColorSupported) != 0;
+
+                            bool isEnabled =
+                                (flags &
+                                DisplayConfigAdvancedColorInfoFlags.AdvancedColorEnabled) != 0;
+
+                            bool isForceDisabled =
+                                (flags &
+                                DisplayConfigAdvancedColorInfoFlags.AdvancedColorForceDisabled) != 0;
+
+                            bool finalSupported = isSupported && !isForceDisabled;
+
+                            // The legacy API does not expose HDR and WCG independently.
+                            // Preserve the existing encoding-based behavior for compatibility.
+                            bool isHdrEncoding =
+                                colorInfo.colorEncoding == DisplayConfigColorEncoding.YCbCr444;
+
+                            displayConfig.IsHdrSupported = finalSupported;
+                            displayConfig.IsHdrEnabled = isEnabled && isHdrEncoding;
+                            displayConfig.IsAcmEnabled = isEnabled && !isHdrEncoding;
+                            displayConfig.ColorEncoding = colorInfo.colorEncoding;
+                            displayConfig.BitsPerColorChannel =
+                                (uint)colorInfo.bitsPerColorChannel;
+
+                            logger.Debug(
+                                $"Legacy AdvancedColorInfo for {displayConfig.FriendlyName}: " +
+                                $"Flags=0x{(uint)flags:X8}, " +
+                                $"HDRSupported={displayConfig.IsHdrSupported}, " +
+                                $"HDREnabled={displayConfig.IsHdrEnabled}, " +
+                                $"ACMEnabled={displayConfig.IsAcmEnabled}, " +
+                                $"Encoding={colorInfo.colorEncoding}, " +
+                                $"BitsPerChannel={colorInfo.bitsPerColorChannel}");
+                        }
+                        else
+                        {
+                            logger.Debug(
+                                $"Failed to get HDR info for " +
+                                $"{displayConfig.DeviceName}: Error {result}");
+
+                            displayConfig.IsHdrSupported = false;
+                            displayConfig.IsHdrEnabled = false;
+                            displayConfig.IsAcmEnabled = false;
+                        }
                     }
 
                     // Resolution and position from source mode
@@ -996,9 +1119,17 @@ namespace DisplayProfileManager.Helpers
                 }
                 layoutWatch.Stop();
 
-                // Apply Advanced Color state (HDR/ACM) after layout — requires valid target handles
+                // Apply Advanced Color state after the display layout because
+                // DisplayConfigSetDeviceInfo requires valid target handles.
                 var hdrWatch = Stopwatch.StartNew();
-                ApplyAdvancedColorState(displayConfigs);
+
+                if (!ApplyAdvancedColorState(displayConfigs))
+                {
+                    hdrWatch.Stop();
+                    logger.Error("Failed to apply Advanced Color state.");
+                    return false;
+                }
+
                 hdrWatch.Stop();
 
                 // Apply color profiles after Advanced Color state is established
