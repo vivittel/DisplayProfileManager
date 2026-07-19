@@ -1179,15 +1179,79 @@ namespace DisplayProfileManager.Helpers
                         bool shouldApplyHdr = !profileDisplay.IsHdrEnabled || activeDisplay.IsHdrEnabled != profileDisplay.IsHdrEnabled;
                         if (shouldApplyHdr)
                         {
-                            logger.Info($"Setting {activeDisplay.FriendlyName} -> HDR to {(profileDisplay.IsHdrEnabled ? "on" : "off")}");
-                            if (!SetHdrState(activeDisplay.AdapterId, activeDisplay.RawTargetId, profileDisplay.IsHdrEnabled))
+                            bool requestedHdrState = profileDisplay.IsHdrEnabled;
+
+                            logger.Info(
+                                $"Setting {activeDisplay.FriendlyName} -> HDR to " +
+                                $"{(requestedHdrState ? "on" : "off")}");
+
+                            if (!SetHdrState(
+                                    activeDisplay.AdapterId,
+                                    activeDisplay.RawTargetId,
+                                    requestedHdrState))
                             {
-                                logger.Error($"Failed to apply HDR setting for {activeDisplay.FriendlyName}.");
+                                logger.Error(
+                                    $"Failed to apply HDR setting for {activeDisplay.FriendlyName}.");
+
                                 allSuccessful = false;
+                            }
+                            else
+                            {
+                                bool verified = false;
+
+                                // Windows may update the reported HDR state asynchronously.
+                                for (int attempt = 1; attempt <= 3; attempt++)
+                                {
+                                    if (attempt > 1)
+                                        System.Threading.Thread.Sleep(100);
+
+                                    var verifiedDisplay = GetDisplayConfigs()
+                                        .FirstOrDefault(c => c.TargetId == profileDisplay.TargetId);
+
+                                    if (verifiedDisplay == null)
+                                    {
+                                        logger.Warn(
+                                            $"Could not query {activeDisplay.FriendlyName} " +
+                                            $"after applying HDR state (attempt {attempt}/3).");
+
+                                        continue;
+                                    }
+
+                                    if (verifiedDisplay.IsHdrEnabled == requestedHdrState)
+                                    {
+                                        logger.Info(
+                                            $"Verified {activeDisplay.FriendlyName} -> HDR is " +
+                                            $"{(requestedHdrState ? "on" : "off")} " +
+                                            $"(attempt {attempt}/3).");
+
+                                        verified = true;
+                                        break;
+                                    }
+
+                                    logger.Debug(
+                                        $"HDR verification mismatch for {activeDisplay.FriendlyName}: " +
+                                        $"requested={(requestedHdrState ? "on" : "off")}, " +
+                                        $"actual={(verifiedDisplay.IsHdrEnabled ? "on" : "off")} " +
+                                        $"(attempt {attempt}/3).");
+                                }
+
+                                if (!verified)
+                                {
+                                    logger.Error(
+                                        $"HDR state verification failed for " +
+                                        $"{activeDisplay.FriendlyName}: expected " +
+                                        $"{(requestedHdrState ? "on" : "off")}.");
+
+                                    allSuccessful = false;
+                                }
                             }
                         }
                         else
-                            logger.Debug($"Skipping {activeDisplay.FriendlyName} -> HDR is already {(profileDisplay.IsHdrEnabled ? "on" : "off")}");
+                        {
+                            logger.Debug(
+                                $"Skipping {activeDisplay.FriendlyName} -> HDR is already " +
+                                $"{(profileDisplay.IsHdrEnabled ? "on" : "off")}");
+                        }
                     }
 
                     // ACM — forced on when HDR is on; independently toggleable otherwise
