@@ -7,7 +7,100 @@
 
 A lightweight Windows desktop application for managing display profiles — save your monitor layout, resolution, refresh rate, HDR state, DPI, audio devices, and scripts into named profiles and switch between them on demand.
 
-This is a fork based on [zac15987/DisplayProfileManager](https://github.com/zac15987/DisplayProfileManager). Distributed under MIT + Commons Clause.
+This is a fork based on [zac15987/DisplayProfileManager](https://github.com/zac15987/DisplayProfileManager).
+and
+[exytral/DisplayProfileManager](https://github.com/exytral/DisplayProfileManager)
+Distributed under MIT + Commons Clause.
+
+---
+
+# Display Profile Manager
+
+> This is a fork of [exytral/DisplayProfileManager](https://github.com/exytral/DisplayProfileManager).
+>
+> This fork contains additional fixes focused on HDR state handling on Windows 11 24H2.
+
+---
+
+# Fork Changes
+
+## HDR Profile Switching Improvements
+
+### Background
+
+On Windows 11 24H2, HDR profile switching could behave incorrectly on some HDR-capable displays.
+
+The original implementation used the legacy Windows Display Configuration API
+(`DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO`) to detect advanced color states.
+
+However, this API does not clearly separate HDR and Wide Color Gamut (WCG) states.
+On some displays using RGB output, the reported state could be ambiguous.
+
+This could cause situations such as:
+
+- HDR ON profile not being detected correctly
+- HDR OFF profile changes being skipped
+- The application incorrectly assuming the current display state already matched the profile
+
+---
+
+## Changes in This Fork
+
+This fork improves HDR handling with the following changes:
+
+### 1. Improved HDR State Detection
+
+Added support for: on Windows 11 24H2 and later.
+
+Benefits:
+
+- HDR state is detected independently from WCG state
+- HDR ON/OFF transitions are more reliable
+- Display state detection matches the actual Windows HDR state
+
+The legacy API remains available as a fallback for older Windows versions.
+
+---
+
+### 2. HDR State Verification After Applying Profiles
+
+After changing HDR state, the application now verifies the actual display state.
+
+The verification:
+
+- Re-queries the display configuration
+- Confirms that the requested HDR state was applied
+- Handles asynchronous Windows display state updates
+
+This prevents silent failures where Windows accepts the request but the display state has not changed.
+
+---
+
+### 3. Improved HDR OFF Profile Handling
+
+HDR OFF profiles now explicitly apply the HDR disabled state.
+
+This prevents a case where:
+
+- Current state: HDR ON
+- Profile state: HDR OFF
+- Application detects an ambiguous state
+- HDR OFF transition is skipped
+
+---
+
+# Relationship with the Original Project
+
+This fork is based on the excellent work of the original Display Profile Manager project.
+
+Special thanks to:
+
+- **exytral** for creating and maintaining Display Profile Manager
+- All contributors who improved display management, multi-monitor support,
+  color profile handling, and the modern display engine
+
+This fork aims to provide targeted compatibility improvements while preserving
+the original project's design and functionality.
 
 ---
 
