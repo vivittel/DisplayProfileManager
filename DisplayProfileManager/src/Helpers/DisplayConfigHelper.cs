@@ -1045,7 +1045,8 @@ namespace DisplayProfileManager.Helpers
                 {
                     if (profileDisplay.IsHdrSupported)
                     {
-                        if (activeDisplay.IsHdrEnabled != profileDisplay.IsHdrEnabled)
+                        bool shouldApplyHdr = !profileDisplay.IsHdrEnabled || activeDisplay.IsHdrEnabled != profileDisplay.IsHdrEnabled;
+                        if (shouldApplyHdr)
                         {
                             logger.Info($"Setting {activeDisplay.FriendlyName} -> HDR to {(profileDisplay.IsHdrEnabled ? "on" : "off")}");
                             if (!SetHdrState(activeDisplay.AdapterId, activeDisplay.RawTargetId, profileDisplay.IsHdrEnabled))
