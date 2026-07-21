@@ -91,11 +91,12 @@ This prevents a case where:
 
 # Relationship with the Original Project
 
-This fork is based on the excellent work of the original Display Profile Manager project.
+This fork is based on the work of the original Display Profile Manager project and its actively maintained DPM-CS fork.
 
 Special thanks to:
 
-- **exytral** for creating and maintaining Display Profile Manager
+- **[@zac15987](https://github.com/zac15987)** for originally creating Display Profile Manager (DPM)
+- **[@exytral](https://github.com/exytral)** for creating and maintaining the DPM-CS fork
 - All contributors who improved display management, multi-monitor support,
   color profile handling, and the modern display engine
 
@@ -205,7 +206,7 @@ MIT + Commons Clause — see [LICENSE](LICENSE) for details. Third-party license
 - [@jarandal](https://github.com/jarandal) ([PR #8](https://github.com/zac15987/DisplayProfileManager/pull/8)) — Initial HDR support, screen rotation
 - [@jonathanasdf](https://github.com/jonathanasdf) ([PR #14](https://github.com/zac15987/DisplayProfileManager/pull/14)) — Initial clone display support
 - [@rvahilario](https://github.com/rvahilario) ([PR #23](https://github.com/zac15987/DisplayProfileManager/pull/23)) — Partial clone fixes, clone UI, test infrastructure
-- [@xtrilla](https://github.com/xtrilla) ([fork](https://github.com/xtrilla/DisplayProfileManager)) — Safe file saves, stability improvements
+- [@xtrilla](https://github.com/xtrilla/DisplayProfileManager) ([fork](https://github.com/xtrilla/DisplayProfileManager)) — Safe file saves, stability improvements
 
 **Community**
 - [@Catriks](https://github.com/Catriks) ([#1](https://github.com/zac15987/DisplayProfileManager/issues/1)) — Requested audio device switching
