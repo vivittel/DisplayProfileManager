@@ -97,8 +97,6 @@ Special thanks to:
 
 - **[@zac15987](https://github.com/zac15987)** for originally creating Display Profile Manager (DPM)
 - **[@exytral](https://github.com/exytral)** for creating and maintaining the DPM-CS fork
-- All contributors who improved display management, multi-monitor support,
-  color profile handling, and the modern display engine
 
 This fork aims to provide targeted compatibility improvements while preserving
 the original project's design and functionality.
@@ -199,18 +197,7 @@ MIT + Commons Clause — see [LICENSE](LICENSE) for details. Third-party license
 - [tinted-themes](https://github.com/tinted-theming) (MIT) — Theme database for DPM Theme Builder
 - [Claude Code](https://claude.ai/code) — Built in collaboration with Anthropic's Claude Code
 
-### 🤝 Contributors
+### 🤝 Project Credits
 
-**Upstream**
-- [@zac15987](https://github.com/zac15987) ([Original project](https://github.com/zac15987/DisplayProfileManager/releases)) — Display profiles, themes, system tray, auto-start, global hotkeys, initial audio device switching support
-- [@jarandal](https://github.com/jarandal) ([PR #8](https://github.com/zac15987/DisplayProfileManager/pull/8)) — Initial HDR support, screen rotation
-- [@jonathanasdf](https://github.com/jonathanasdf) ([PR #14](https://github.com/zac15987/DisplayProfileManager/pull/14)) — Initial clone display support
-- [@rvahilario](https://github.com/rvahilario) ([PR #23](https://github.com/zac15987/DisplayProfileManager/pull/23)) — Partial clone fixes, clone UI, test infrastructure
-- [@xtrilla](https://github.com/xtrilla/DisplayProfileManager) ([fork](https://github.com/xtrilla/DisplayProfileManager)) — Safe file saves, stability improvements
-
-**Community**
-- [@Catriks](https://github.com/Catriks) ([#1](https://github.com/zac15987/DisplayProfileManager/issues/1)) — Requested audio device switching
-- [@Alienmario](https://github.com/Alienmario) ([#1](https://github.com/zac15987/DisplayProfileManager/issues/1), [#5](https://github.com/zac15987/DisplayProfileManager/issues/5)) — Suggested audio improvements and reported multi-monitor switching issues
-- [@anodynos](https://github.com/anodynos) ([#2](https://github.com/zac15987/DisplayProfileManager/issues/2)) — Suggested global hotkeys for profile switching
-- [@xtrilla](https://github.com/xtrilla) ([#4](https://github.com/zac15987/DisplayProfileManager/issues/4)) — Requested monitor enable/disable
-- [@ffgtthr](https://github.com/ffgtthr) ([#2](https://github.com/zac15987/DisplayProfileManager/issues/2)) — Custom profile icons
+- [@zac15987](https://github.com/zac15987) — Original creator of Display Profile Manager (DPM)
+- [@exytral](https://github.com/exytral) — Creator and maintainer of the DPM-CS fork
